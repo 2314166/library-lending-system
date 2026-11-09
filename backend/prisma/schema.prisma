@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MEMBER
+  LIBRARIAN
+}
+
+enum ReservationStatus {
+  QUEUED
+  READY
+  FULFILLED
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now())
+
+  loans        Loan[]
+  reservations Reservation[]
+  fines        Fine[]
+  payments     FinePayment[] @relation("RecordedBy")
+}
+
+model Book {
+  id          Int      @id @default(autoincrement())
+  title       String
+  author      String
+  genre       String?
+  totalCopies Int
+  createdAt   DateTime @default(now())
+
+  loans        Loan[]
+  reservations Reservation[]
+
+  @@index([title])
+}
+
+model Loan {
+  id         Int       @id @default(autoincrement())
+  bookId     Int
+  memberId   Int
+  borrowedAt DateTime
+  dueAt      DateTime
+  returnedAt DateTime?
+
+  book   Book @relation(fields: [bookId], references: [id])
+  member User @relation(fields: [memberId], references: [id])
+  fine   Fine?
+
+  @@index([memberId, returnedAt])
+  @@index([bookId, returnedAt])
+}
+
+model Reservation {
+  id            Int               @id @default(autoincrement())
+  bookId        Int
+  memberId      Int
+  status        ReservationStatus @default(QUEUED)
+  createdAt     DateTime
+  readyAt       DateTime?
+  holdExpiresAt DateTime?
+
+  book   Book @relation(fields: [bookId], references: [id])
+  member User @relation(fields: [memberId], references: [id])
+
+  @@index([bookId, status, createdAt])
+  @@index([memberId, status])
+}
+
+model Fine {
+  id         Int      @id @default(autoincrement())
+  loanId     Int      @unique
+  memberId   Int
+  daysLate   Int
+  amount     Int
+  amountPaid Int      @default(0)
+  createdAt  DateTime
+
+  loan     Loan          @relation(fields: [loanId], references: [id])
+  member   User          @relation(fields: [memberId], references: [id])
+  payments FinePayment[]
+
+  @@index([memberId])
+}
+
+model FinePayment {
+  id           Int      @id @default(autoincrement())
+  fineId       Int
+  amount       Int
+  recordedById Int
+  paidAt       DateTime
+
+  fine       Fine @relation(fields: [fineId], references: [id])
+  recordedBy User @relation("RecordedBy", fields: [recordedById], references: [id])
+}
+
+model Setting {
+  key       String   @id
+  value     Int
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    container_name: library_lending_db
+    environment:
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library
+      POSTGRES_DB: library_lending
+    ports:
+      - "5433:5432"
+    volumes:
+      - library_pgdata:/var/lib/postgresql/data
+volumes:
+  library_pgdata:
